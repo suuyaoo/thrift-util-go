@@ -22,10 +22,10 @@ func ThriftAddress(addr string) string {
 	return addr
 }
 
-func checkAddress(prep, addr string) bool {
+func parseAddress(prep, addr string) (string, bool) {
 	pos := strings.LastIndex(addr, ":")
 	if pos == -1 {
-		return false
+		return addr, false
 	}
 	prepStr := ""
 	ipStr := addr[0:pos]
@@ -39,25 +39,30 @@ func checkAddress(prep, addr string) bool {
 			if ipStr[ipLen-1] == ']' {
 				ipStr = ipStr[1 : ipLen-2]
 			} else {
-				return false
+				return addr, false
 			}
 		}
 	}
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
-		return false
+		return addr, false
 	}
 	if prep != "" && prepStr != prep {
-		return false
+		return addr, false
 	}
 	port, err := strconv.ParseInt(portStr, 10, 16)
 	if err != nil {
-		return false
+		return addr, false
 	}
 	if port < 0 {
-		return false
+		return addr, false
 	}
-	return true
+	return prepStr + addr, true
+}
+
+func checkAddress(prep, addr string) bool {
+	_, ok := parseAddress(prep, addr)
+	return ok
 }
 
 func IsThriftAddress(addr string) bool {
@@ -74,4 +79,20 @@ func IsThriftAddress(addr string) bool {
 		return checkAddress("tcp6://", addr[7:])
 	}
 	return checkAddress("", addr)
+}
+
+func ParseThriftAddress(addr string) (string, bool) {
+	if len(addr) < 7 {
+		return parseAddress("", addr)
+	}
+	if addr[0:7] == "http://" {
+		return parseAddress("", addr[7:])
+	}
+	if addr[0:7] == "tcp4://" {
+		return parseAddress("tcp4://", addr[7:])
+	}
+	if addr[0:7] == "tcp6://" {
+		return parseAddress("tcp6://", addr[7:])
+	}
+	return parseAddress("", addr)
 }
